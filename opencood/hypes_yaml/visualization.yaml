@@ -2,8 +2,10 @@
 name: visualization
 
 yaml_parser: "load_voxel_params"
-root_dir: "opv2v_data_dumping/train"
-validate_dir: "opv2v_data_dumping/test"
+#root_dir: "opv2v_data_dumping/train"
+root_dir: "/home/letiangao18/Data/train"
+#validate_dir: "opv2v_data_dumping/test"
+validate_dir: "/home/letiangao18/Data/test"
 
 train_params:
   batch_size: &batch_size 4

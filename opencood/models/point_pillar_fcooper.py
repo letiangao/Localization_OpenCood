@@ -45,6 +45,9 @@ class PointPillarFCooper(nn.Module):
                                   kernel_size=1)
         self.reg_head = nn.Conv2d(128 * 2, 7 * args['anchor_number'],
                                   kernel_size=1)
+        # localization modify. in_channel should be 128*2*cav_num？
+        #self.loc_head = nn.Conv2d(128 * 2*2, 6, kernel_size=1)
+        self.loc_head = nn.Linear(100*352*256*2, 6)
 
         if args['backbone_fix']:
             self.backbone_fix()
@@ -99,11 +102,18 @@ class PointPillarFCooper(nn.Module):
             spatial_features_2d = self.naive_compressor(spatial_features_2d)
 
         fused_feature = self.fusion_net(spatial_features_2d, record_len)
+        #localization modify
+        localization_feature = spatial_features_2d
 
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)
+        #localization modify
+        locm = self.loc_head(localization_feature.reshape(1, -1))
 
         output_dict = {'psm': psm,
-                       'rm': rm}
+                       'rm': rm,
+                       #localization modify
+                       'locm': locm
+                       }
 
         return output_dict

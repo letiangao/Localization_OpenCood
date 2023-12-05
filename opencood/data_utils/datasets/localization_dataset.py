@@ -22,30 +22,50 @@ from opencood.utils.pcd_utils import \
     mask_points_by_range, mask_ego_points, shuffle_points, \
     downsample_lidar_minimum
 from opencood.utils.transformation_utils import x1_to_x2
+from opencood.utils.transformation_utils import transformation_to_x
 
 
-class IntermediateFusionDataset(basedataset.BaseDataset):
+class LocalizationDataset(basedataset.BaseDataset):
     """
-    This class is for intermediate fusion where each vehicle transmit the
+    This class is for relative localization where the surrounding vehicle transmits the
     deep features to ego.
     """
-
     def __init__(self, params, visualize, train=True):
-        super(IntermediateFusionDataset, self). \
+        super(LocalizationDataset, self). \
             __init__(params, visualize, train)
+
+        # localization modify
+        # modify the scenario_database for localization, if contains multiple cavs,
+        # divide the scenario into multiple scenarios, each contains only 2 cavs
+        modified_scenario_database = OrderedDict()
+        scenario_num = 0
+        for scenario_id, scenario_value in self.scenario_database.items():
+            if len(scenario_value) < 2:
+                continue
+            else:
+                cav_id_list = [int(x) for x in scenario_value.keys()]
+                cav_id_list.sort()
+                for ego_id in cav_id_list[:-1]:
+                    for cav_id in [i for i in cav_id_list if i > ego_id]:
+                        modified_scenario_database[scenario_num] = OrderedDict()
+                        modified_scenario_database[scenario_num].update(OrderedDict({str(ego_id): self.scenario_database[scenario_id][str(ego_id)], str(cav_id):self.scenario_database[scenario_id][str(cav_id)]}))
+                        modified_scenario_database[scenario_num][str(ego_id)]['ego'] = True
+                        modified_scenario_database[scenario_num][str(cav_id)]['ego'] = False
+                        scenario_num += 1
+        self.scenario_database = modified_scenario_database
 
         # if project first, cav's lidar will first be projected to
         # the ego's coordinate frame. otherwise, the feature will be
         # projected instead.
         self.proj_first = True
         if 'proj_first' in params['fusion']['args'] and \
-                not params['fusion']['args']['proj_first']:
+            not params['fusion']['args']['proj_first']:
             self.proj_first = False
 
         # whether there is a time delay between the time that cav project
         # lidar to ego and the ego receive the delivered feature
         self.cur_ego_pose_flag = True if 'cur_ego_pose_flag' not in \
-                                         params['fusion']['args'] else \
+            params['fusion']['args'] else \
             params['fusion']['args']['cur_ego_pose_flag']
 
         self.pre_processor = build_preprocessor(params['preprocess'],
@@ -55,12 +75,13 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
             train)
 
     def __getitem__(self, idx):
-        print('enter getitem','idx:',idx)
+        print('enter loca_dataset getitem')
         base_data_dict = self.retrieve_base_data(idx,
                                                  cur_ego_pose_flag=self.cur_ego_pose_flag)
 
         processed_data_dict = OrderedDict()
         processed_data_dict['ego'] = {}
+        processed_data_dict['ego']['pose'] = {} #localization modify
 
         ego_id = -1
         ego_lidar_pose = []
@@ -75,6 +96,19 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
             0], "The first element in the OrderedDict must be ego"
         assert ego_id != -1
         assert len(ego_lidar_pose) > 0
+
+        # localization modify
+        # save the relative pose to processed_data_dict
+        for cav_id, cav_content in base_data_dict.items():#localization modify
+            if not cav_content['ego']:#localization modify
+                relative_pose = transformation_to_x(cav_content['params']['transformation_matrix'])
+                gt_relative_pose = transformation_to_x(cav_content['params']['gt_transformation_matrix'])
+                # for localization learning, the tan(yaw) is the target instead of yaw
+                relative_pose_for_loss = relative_pose
+                relative_pose_for_loss[4] = np.tan(relative_pose[4])
+                gt_relative_pose_for_loss = gt_relative_pose
+                gt_relative_pose_for_loss[4] = np.tan(gt_relative_pose[4])
+
 
         pairwise_t_matrix = \
             self.get_pairwise_transformation(base_data_dict,
@@ -96,6 +130,7 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
 
         # loop over all CAVs to process information
         for cav_id, selected_cav_base in base_data_dict.items():
+            #skip_scenario_flg = False
             # check if the cav is within the communication range with ego
             distance = \
                 math.sqrt((selected_cav_base['params']['lidar_pose'][0] -
@@ -103,7 +138,8 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
                                   selected_cav_base['params'][
                                       'lidar_pose'][1] - ego_lidar_pose[
                                       1]) ** 2)
-            if distance > opencood.data_utils.datasets.COM_RANGE:
+            if distance > opencood.data_utils.datasets.COM_RANGE: \
+                #skip_scenario_flg = True
                 continue
 
             selected_cav_processed = self.get_item_single_car(
@@ -163,10 +199,10 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         time_delay = time_delay + (self.max_cav - len(time_delay)) * [0.]
         infra = infra + (self.max_cav - len(infra)) * [0.]
         spatial_correction_matrix = np.stack(spatial_correction_matrix)
-        padding_eye = np.tile(np.eye(4)[None], (self.max_cav - len(
-            spatial_correction_matrix), 1, 1))
+        padding_eye = np.tile(np.eye(4)[None],(self.max_cav - len(
+                                               spatial_correction_matrix),1,1))
         spatial_correction_matrix = np.concatenate([spatial_correction_matrix,
-                                                    padding_eye], axis=0)
+                                                   padding_eye], axis=0)
 
         processed_data_dict['ego'].update(
             {'object_bbx_center': object_bbx_center,
@@ -182,11 +218,17 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
              'spatial_correction_matrix': spatial_correction_matrix,
              'pairwise_t_matrix': pairwise_t_matrix})
 
+        processed_data_dict['ego']['pose'].update({
+            'relative_pose': relative_pose,  # localization modify
+            'gt_relative_pose': gt_relative_pose,  # localization modify
+            'relative_pose_for_loss': relative_pose_for_loss,
+            'gt_relative_pose_for_loss': gt_relative_pose_for_loss
+        })
+
         if self.visualize:
             processed_data_dict['ego'].update({'origin_lidar':
                 np.vstack(
                     projected_lidar_stack)})
-        print("out __getitem__")
         return processed_data_dict
 
     def get_item_single_car(self, selected_cav_base, ego_pose):
@@ -300,6 +342,10 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         # and current timestamp
         spatial_correction_matrix_list = []
 
+        #localization modify
+        relative_pose_for_loss_list = []
+        gt_relative_pose_for_loss_list = []
+
         if self.visualize:
             origin_lidar = []
 
@@ -319,6 +365,12 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
             infra.append(ego_dict['infra'])
             spatial_correction_matrix_list.append(
                 ego_dict['spatial_correction_matrix'])
+            #transformation_matrix_list.append(
+            #    ego_dict['transformation_matrix']) #localization modify
+            #gt_transformation_matrix_list.append(
+            #    ego_dict['gt_transformation_matrix']) #localization modify
+            relative_pose_for_loss_list.append(ego_dict['pose']['relative_pose_for_loss'])#localization modify
+            gt_relative_pose_for_loss_list.append(ego_dict['pose']['gt_relative_pose_for_loss'])#localization modify
 
             if self.visualize:
                 origin_lidar.append(ego_dict['origin_lidar'])
@@ -348,6 +400,17 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
         # (B, max_cav)
         pairwise_t_matrix = torch.from_numpy(np.array(pairwise_t_matrix_list))
 
+        # localization modify
+        # save the relative_pose_for_loss to ego vehicle
+        #transformation_matrix = \
+        #    torch.from_numpy(np.array(transformation_matrix_list))
+        #gt_transformation_matrix = \
+        #    torch.from_numpy(np.array(gt_transformation_matrix_list))
+        relative_pose_for_loss = \
+            torch.from_numpy(np.array(relative_pose_for_loss_list))
+        gt_relative_pose_for_loss = \
+            torch.from_numpy(np.array(gt_relative_pose_for_loss_list))
+
         # object id is only used during inference, where batch size is 1.
         # so here we only get the first element.
         output_dict['ego'].update({'object_bbx_center': object_bbx_center,
@@ -358,7 +421,12 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
                                    'object_ids': object_ids[0],
                                    'prior_encoding': prior_encoding,
                                    'spatial_correction_matrix': spatial_correction_matrix_list,
-                                   'pairwise_t_matrix': pairwise_t_matrix})
+                                   'pairwise_t_matrix': pairwise_t_matrix,
+                                   #'transformation_matrix':transformation_matrix,
+                                   #'gt_transformation_matrix': gt_transformation_matrix
+                                   'relative_pose_for_loss':relative_pose_for_loss,
+                                   'gt_relative_pose_for_loss': gt_relative_pose_for_loss}
+                                  )
 
         if self.visualize:
             origin_lidar = \
@@ -380,10 +448,10 @@ class IntermediateFusionDataset(basedataset.BaseDataset):
                         'anchor_box']))})
 
         # save the transformation matrix (4, 4) to ego vehicle
-        transformation_matrix_torch = \
-            torch.from_numpy(np.identity(4)).float()
-        output_dict['ego'].update({'transformation_matrix':
-                                       transformation_matrix_torch})
+        # transformation_matrix_torch = \
+        #     torch.from_numpy(np.identity(4)).float()
+        # output_dict['ego'].update({'transformation_matrix':
+        #                                transformation_matrix_torch})
 
         return output_dict
 

@@ -106,3 +106,33 @@ def dist_to_continuous(p_dist, displacement_dist, res, downsample_rate):
     p_dist = p_dist + displacement_dist
     p_continuous = p_dist * res * downsample_rate
     return p_continuous
+
+
+# localization modify
+def transformation_to_x(matrix):
+    """
+    From the transformation matrix to pose (x, y, z, roll, yaw, pitch)
+    if the transformation matrix is from agent to world, then the pose is absolute pose in world frame
+    if the transformation matrix is x1 to x2, then the pose is relative pose in x2 frame
+
+    Parameters
+    ----------
+    matrix : np.ndarray
+        The transformation matrix.
+
+    Returns
+    -------
+    pose : list
+        [x, y, z, roll, yaw, pitch], in radians
+    """
+
+    x = matrix[0, 3]
+    y = matrix[1, 3]
+    z = matrix[2, 3]
+
+    pitch = np.arcsin(matrix[2, 0])
+    roll = np.arctan(-matrix[2, 1] / matrix[2, 2])
+    yaw = np.arctan2(matrix[1, 0], matrix[0, 0])
+
+    pose = [x, y, z, roll, yaw, pitch]
+    return pose

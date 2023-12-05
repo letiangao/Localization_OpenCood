@@ -4,6 +4,7 @@
 
 
 import argparse
+import gc
 import os
 import statistics
 
@@ -17,6 +18,8 @@ from opencood.tools import train_utils
 from opencood.tools import multi_gpu_utils
 from opencood.data_utils.datasets import build_dataset
 from opencood.tools import train_utils
+
+from collections import OrderedDict # localization modify
 
 
 def train_parser():
@@ -138,12 +141,21 @@ def main():
         pbar2 = tqdm.tqdm(total=len(train_loader), leave=True)
 
         for i, batch_data in enumerate(train_loader):
+            # localization modify: if the scenario contains only ego CAV, which means the other CAV is out of range, skip this scenario
+            if batch_data['ego']['record_len'].item()<2: # localization modify
+                continue # localization modify
             # the model will be evaluation mode during validation
+            print("i:",i)
             model.train()
             model.zero_grad()
             optimizer.zero_grad()
 
             batch_data = train_utils.to_device(batch_data, device)
+
+            batch_data['ego']['label_dict']['pose'] = OrderedDict() # localization modify
+            batch_data['ego']['label_dict']['pose'].update({
+                                   'relative_pose_for_loss': batch_data['ego']['relative_pose_for_loss'],
+                                   'gt_relative_pose_for_loss': batch_data['ego']['gt_relative_pose_for_loss']}) # localization modify
 
             # case1 : late fusion train --> only ego needed,
             # and ego is random selected
@@ -155,13 +167,19 @@ def main():
                 ouput_dict = model(batch_data['ego'])
                 # first argument is always your output dictionary,
                 # second argument is always your label dictionary.
+                #localization modify: third and fourth arguments are for localization
                 final_loss = criterion(ouput_dict,
                                        batch_data['ego']['label_dict'])
+                                       #batch_data['ego']['relative_pose_for_loss'],
+                                       #batch_data['ego']['gt_relative_pose_for_loss']
             else:
                 with torch.cuda.amp.autocast():
                     ouput_dict = model(batch_data['ego'])
                     final_loss = criterion(ouput_dict,
-                                           batch_data['ego']['label_dict'])
+                                           batch_data['ego']['label_dict']
+                                           #batch_data['ego']['relative_pose_for_loss'],
+                                           #batch_data['ego']['gt_relative_pose_for_loss']
+                                           )
 
 
             criterion.logging(epoch, i, len(train_loader), writer, pbar=pbar2)
@@ -187,9 +205,19 @@ def main():
 
             with torch.no_grad():
                 for i, batch_data in enumerate(val_loader):
+                    # localization modify: if the scenario contains only ego CAV, which means the other CAV is out of range, skip this scenario
+                    if batch_data['ego']['record_len'].item() < 2:  # localization modify
+                        continue  # localization modify
                     model.eval()
 
                     batch_data = train_utils.to_device(batch_data, device)
+
+                    batch_data['ego']['label_dict']['pose'] = OrderedDict()  # localization modify
+                    batch_data['ego']['label_dict']['pose'].update({
+                        'relative_pose_for_loss': batch_data['ego']['relative_pose_for_loss'],
+                        'gt_relative_pose_for_loss': batch_data['ego'][
+                            'gt_relative_pose_for_loss']})  # localization modify
+
                     ouput_dict = model(batch_data['ego'])
 
                     final_loss = criterion(ouput_dict,
