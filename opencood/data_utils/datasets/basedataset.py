@@ -154,7 +154,7 @@ class BaseDataset(Dataset):
                 yaml_files = \
                     sorted([os.path.join(cav_path, x)
                             for x in os.listdir(cav_path) if
-                            x.endswith('.yaml') and 'additional' not in x])
+                            x.endswith('.yaml') and 'additional' not in x and 'camera_gt' not in x])
                 timestamps = self.extract_timestamps(yaml_files)
 
                 for timestamp in timestamps:
@@ -441,6 +441,8 @@ class BaseDataset(Dataset):
 
         cur_ego_lidar_pose = cur_ego_params['lidar_pose']
         cur_cav_lidar_pose = cur_params['lidar_pose']
+        #localization modify
+        cur_cav_lidar_pose_for_gt = cur_cav_lidar_pose
 
         if not cav_content['ego'] and self.loc_err_flag:
             delay_cav_lidar_pose = self.add_loc_noise(delay_cav_lidar_pose,
@@ -462,7 +464,9 @@ class BaseDataset(Dataset):
         # This is only used for late fusion, as it did the transformation
         # in the postprocess, so we want the gt object transformation use
         # the correct one
-        gt_transformation_matrix = x1_to_x2(cur_cav_lidar_pose,
+
+        #localization modify: original use "cur_cav_lidar_pose", now for localization use "cur_cav_lidar_pose_for_gt"
+        gt_transformation_matrix = x1_to_x2(cur_cav_lidar_pose_for_gt,
                                             cur_ego_lidar_pose)
 
         # we always use current timestamp's gt bbx to gain a fair evaluation

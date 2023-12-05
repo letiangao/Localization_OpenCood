@@ -1,10 +1,12 @@
 name: point_pillar_fcooper
-root_dir: 'opv2v_data_dumping/train'
-validate_dir: 'opv2v_data_dumping/validate'
+#root_dir: 'opv2v_data_dumping/train'
+root_dir: "/home/letiangao18/Data/train"
+#validate_dir: 'opv2v_data_dumping/validate'
+validate_dir: "/home/letiangao18/Data/validate"
 
 yaml_parser: "load_point_pillar_params"
 train_params:
-  batch_size: &batch_size 2
+  batch_size: &batch_size 1
   epoches: 15
   eval_freq: 1
   save_freq: 1
