@@ -142,10 +142,13 @@ def main():
 
         for i, batch_data in enumerate(train_loader):
             # localization modify: if the scenario contains only ego CAV, which means the other CAV is out of range, skip this scenario
-            if batch_data['ego']['record_len'].item()<2: # localization modify
-                continue # localization modify
+            if batch_data['ego']['record_len'].sum().item()< 2*hypes['train_params']['batch_size']: # localization modify
+                continue  # localization modify
             # the model will be evaluation mode during validation
-            print("i:",i)
+            aaa= batch_data['ego']['feature_num']
+            del batch_data['ego']['merged_feature_dict']
+
+            print("i:", i)
             model.train()
             model.zero_grad()
             optimizer.zero_grad()
@@ -163,8 +166,12 @@ def main():
             # case3 : intermediate fusion --> ['ego']['processed_lidar']
             # becomes a list, which containing all data from other cavs
             # as well
+            a = batch_data['ego']['record_len']
             if not opt.half:
                 ouput_dict = model(batch_data['ego'])
+                if not ouput_dict['dim_match_flg']:
+                    continue
+                del ouput_dict['dim_match_flg']
                 # first argument is always your output dictionary,
                 # second argument is always your label dictionary.
                 #localization modify: third and fourth arguments are for localization
@@ -175,6 +182,9 @@ def main():
             else:
                 with torch.cuda.amp.autocast():
                     ouput_dict = model(batch_data['ego'])
+                    if not ouput_dict['dim_match_flg']:
+                        continue
+                    del ouput_dict['dim_match_flg']
                     final_loss = criterion(ouput_dict,
                                            batch_data['ego']['label_dict']
                                            #batch_data['ego']['relative_pose_for_loss'],
@@ -196,6 +206,9 @@ def main():
             if hypes['lr_scheduler']['core_method'] == 'cosineannealwarm':
                 scheduler.step_update(epoch * num_steps + i)
 
+            if i > 1000: #localization modify
+                break
+
         if epoch % hypes['train_params']['save_freq'] == 0:
             torch.save(model_without_ddp.state_dict(),
                 os.path.join(saved_path, 'net_epoch%d.pth' % (epoch + 1)))
@@ -206,8 +219,10 @@ def main():
             with torch.no_grad():
                 for i, batch_data in enumerate(val_loader):
                     # localization modify: if the scenario contains only ego CAV, which means the other CAV is out of range, skip this scenario
-                    if batch_data['ego']['record_len'].item() < 2:  # localization modify
+                    if batch_data['ego']['record_len'].sum().item()<2*hypes['train_params']['batch_size']:  # localization modify
                         continue  # localization modify
+                    del batch_data['ego']['merged_feature_dict']
+
                     model.eval()
 
                     batch_data = train_utils.to_device(batch_data, device)
@@ -219,10 +234,15 @@ def main():
                             'gt_relative_pose_for_loss']})  # localization modify
 
                     ouput_dict = model(batch_data['ego'])
+                    if not ouput_dict['dim_match_flg']:
+                        continue
+                    del ouput_dict['dim_match_flg']
 
                     final_loss = criterion(ouput_dict,
                                            batch_data['ego']['label_dict'])
                     valid_ave_loss.append(final_loss.item())
+                    if i>1000: #localization modify
+                        break
             valid_ave_loss = statistics.mean(valid_ave_loss)
             print('At epoch %d, the validation loss is %f' % (epoch,
                                                               valid_ave_loss))

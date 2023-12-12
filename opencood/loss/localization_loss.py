@@ -157,8 +157,9 @@ class LocalizationLoss(nn.Module):
             # pose_error_for_loss(1, 5) * self.loc_weight[5] + \
             # pose_error_for_loss(1, 6) * self.loc_weight[6]
 
-        #localization modify (add loc loss)
-        total_loss = reg_loss + conf_loss #+ loc_loss
+        # localization modify (add loc loss)
+        # total_loss = reg_loss + conf_loss + loc_loss
+        total_loss = loc_loss
 
         self.loss_dict.update({'total_loss': total_loss,
                                'reg_loss': reg_loss,

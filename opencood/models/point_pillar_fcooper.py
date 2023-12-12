@@ -46,8 +46,10 @@ class PointPillarFCooper(nn.Module):
         self.reg_head = nn.Conv2d(128 * 2, 7 * args['anchor_number'],
                                   kernel_size=1)
         # localization modify. in_channel should be 128*2*cav_num？
-        #self.loc_head = nn.Conv2d(128 * 2*2, 6, kernel_size=1)
+        # self.loc_head = nn.Conv2d(128 * 2*2, 6, kernel_size=1)
         self.loc_head = nn.Linear(100*352*256*2, 6)
+        #self.loc_head = nn.Linear(100 * 352 * 256 * 2, out_features=256)
+        #self.loc_head_layer2 = nn.Linear(256, 6)
 
         if args['backbone_fix']:
             self.backbone_fix()
@@ -101,19 +103,38 @@ class PointPillarFCooper(nn.Module):
         if self.compression:
             spatial_features_2d = self.naive_compressor(spatial_features_2d)
 
-        fused_feature = self.fusion_net(spatial_features_2d, record_len)
-        #localization modify
-        localization_feature = spatial_features_2d
+        fused_feature = self.fusion_net(spatial_features_2d, record_len, False)
+
 
         psm = self.cls_head(fused_feature)
         rm = self.reg_head(fused_feature)
-        #localization modify
-        locm = self.loc_head(localization_feature.reshape(1, -1))
+
+        # localization modify
+        # in some cases, the agent length is 2, but the processed feature contains only 1, so the tensor dim is 1,
+        # then it cannot be processed by localization_fusion_net, give up this kind of data, go to next round training
+        # potential reason: the two agents have no overlap points, not sure, need to further debug
+        if int(batch_dict['record_len'].sum()) == batch_dict['spatial_features_2d'].shape[0]:
+            dim_match_flg = True
+        else:
+            dim_match_flg = False
+            print('feature dim and vehicle quantity not match')
+
+        # locm = self.loc_head(localization_feature.reshape(1, -1))
+        if dim_match_flg:
+            # localization modify
+            # localization_feature = spatial_features_2d.view(1, 100*352*256*2)
+            localization_feature = self.fusion_net(spatial_features_2d, record_len, True)
+            locm = self.loc_head(localization_feature)
+        else:
+            locm = None
+        #locm_hidden = nn.functional.relu(self.loc_head_layer1(localization_feature))
+        #locm = self.loc_head_layer2(locm_hidden)
 
         output_dict = {'psm': psm,
                        'rm': rm,
                        #localization modify
-                       'locm': locm
+                       'locm': locm,
+                       'dim_match_flg': dim_match_flg
                        }
 
         return output_dict

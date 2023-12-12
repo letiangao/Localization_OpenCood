@@ -19,12 +19,15 @@ class SpatialFusion(nn.Module):
         split_x = torch.tensor_split(x, cum_sum_len[:-1].cpu())
         return split_x
 
-    def forward(self, x, record_len):
+    def forward(self, x, record_len, loc_flg):
         # x: B, C, H, W, split x:[(B1, C, W, H), (B2, C, W, H)]
         split_x = self.regroup(x, record_len)
         out = []
 
         for xx in split_x:
-            xx = torch.max(xx, dim=0, keepdim=True)[0]
+            if loc_flg:
+                xx = xx.view(1, 2 * 256 * 100 * 352)
+            else:
+                xx = torch.max(xx, dim=0, keepdim=True)[0]
             out.append(xx)
         return torch.cat(out, dim=0)
