@@ -124,7 +124,7 @@ class PointPillarFCooper(nn.Module):
             # localization modify
             # localization_feature = spatial_features_2d.view(1, 100*352*256*2)
             localization_feature = self.fusion_net(spatial_features_2d, record_len, True)
-            locm = self.loc_head(localization_feature)
+            locm = self.loc_head(localization_feature.reshape(1, -1))
         else:
             locm = None
         #locm_hidden = nn.functional.relu(self.loc_head_layer1(localization_feature))
