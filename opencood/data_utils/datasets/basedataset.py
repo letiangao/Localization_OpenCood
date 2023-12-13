@@ -309,6 +309,7 @@ class BaseDataset(Dataset):
         # get all timestamp keys
         timestamp_keys = list(scenario_database.items())[0][1]
         # retrieve the correct index
+        #print('timestamp_index:', timestamp_index, 'timestampLen:', len(list(timestamp_keys.items())))
         timestamp_key = list(timestamp_keys.items())[timestamp_index][0]
 
         return timestamp_key

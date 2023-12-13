@@ -12,6 +12,7 @@ from collections import OrderedDict
 
 import numpy as np
 import torch
+import copy
 
 import opencood.data_utils.datasets
 import opencood.data_utils.post_processor as post_processor
@@ -39,6 +40,7 @@ class LocalizationDataset(basedataset.BaseDataset):
         # divide the scenario into multiple scenarios, each contains only 2 cavs
         modified_scenario_database = OrderedDict()
         scenario_num = 0
+        modified_len_record = list()
         for scenario_id, scenario_value in self.scenario_database.items():
             if len(scenario_value) < 2:
                 continue
@@ -48,11 +50,49 @@ class LocalizationDataset(basedataset.BaseDataset):
                 for ego_id in cav_id_list[:-1]:
                     for cav_id in [i for i in cav_id_list if i > ego_id]:
                         modified_scenario_database[scenario_num] = OrderedDict()
-                        modified_scenario_database[scenario_num].update(OrderedDict({str(ego_id): self.scenario_database[scenario_id][str(ego_id)], str(cav_id):self.scenario_database[scenario_id][str(cav_id)]}))
-                        modified_scenario_database[scenario_num][str(ego_id)]['ego'] = True
-                        modified_scenario_database[scenario_num][str(cav_id)]['ego'] = False
-                        scenario_num += 1
+                        ##modified_scenario_database[scenario_num].update(OrderedDict({str(ego_id): self.scenario_database[scenario_id][str(ego_id)], str(cav_id):self.scenario_database[scenario_id][str(cav_id)]}))
+                        temp1 = copy.deepcopy(self.scenario_database[scenario_id][str(ego_id)])
+                        temp2 = copy.deepcopy(self.scenario_database[scenario_id][str(cav_id)])
+                        modified_scenario_database[scenario_num].update(
+                            {str(ego_id): temp1,
+                             str(cav_id): temp2})
+                        modified_scenario_database[scenario_num][str(ego_id)].update({'ego': True})
+                        modified_scenario_database[scenario_num][str(cav_id)].update({'ego': False})
+                        # the len_record needs to be modified based on the modified scenario database
+                        if not modified_len_record:
+                            modified_len_record.append(self.len_record[0])
+                        elif scenario_id==0:
+                            pre_len = modified_len_record[-1]
+                            modified_len_record.append(
+                                pre_len + self.len_record[0])
+                        else:
+                            pre_len = modified_len_record[-1]
+                            modified_len_record.append(pre_len + (self.len_record[scenario_id]-self.len_record[scenario_id-1]))
+                        scenario_num = scenario_num + 1
         self.scenario_database = modified_scenario_database
+        self.len_record = modified_len_record
+
+        for key, value in modified_scenario_database.items():
+            flg = 0
+            for key2, value2 in value.items():
+                if modified_scenario_database[key][key2]['ego']:
+                    flg = flg+1;
+                    if flg == 2:
+                        print(key, 'two vehicles are both ego')
+                        #modified_scenario_database[key][key2].update({"ego": False})
+
+        for key, value in self.scenario_database.items():
+            flg = 0
+            for key2, value2 in value.items():
+                if self.scenario_database[key][key2]['ego']:
+                    flg = flg+1;
+                    if flg == 2:
+                        print(key, 'two vehicles are both ego')
+                else:
+                    if flg == 1:
+                        continue
+                    print(key, 'first vehicle is not ego')
+
 
         # if project first, cav's lidar will first be projected to
         # the ego's coordinate frame. otherwise, the feature will be
@@ -75,7 +115,7 @@ class LocalizationDataset(basedataset.BaseDataset):
             train)
 
     def __getitem__(self, idx):
-        print('enter loca_dataset getitem')
+        #print('enter loca_dataset getitem')
         base_data_dict = self.retrieve_base_data(idx,
                                                  cur_ego_pose_flag=self.cur_ego_pose_flag)
 
@@ -99,6 +139,11 @@ class LocalizationDataset(basedataset.BaseDataset):
 
         # localization modify
         # save the relative pose to processed_data_dict
+
+        relative_pose = []
+        gt_relative_pose = []
+        relative_pose_for_loss = []
+        gt_relative_pose_for_loss = []
         for cav_id, cav_content in base_data_dict.items():#localization modify
             if not cav_content['ego']:#localization modify
                 relative_pose = transformation_to_x(cav_content['params']['transformation_matrix'])
@@ -141,7 +186,7 @@ class LocalizationDataset(basedataset.BaseDataset):
             if distance > opencood.data_utils.datasets.COM_RANGE: \
                 #skip_scenario_flg = True
                 continue
-
+            print("distance:", distance)
             selected_cav_processed = self.get_item_single_car(
                 selected_cav_base,
                 ego_lidar_pose)
@@ -222,7 +267,8 @@ class LocalizationDataset(basedataset.BaseDataset):
             'relative_pose': relative_pose,  # localization modify
             'gt_relative_pose': gt_relative_pose,  # localization modify
             'relative_pose_for_loss': relative_pose_for_loss,
-            'gt_relative_pose_for_loss': gt_relative_pose_for_loss
+            'gt_relative_pose_for_loss': gt_relative_pose_for_loss,
+            'merged_feature_dict':merged_feature_dict
         })
 
         if self.visualize:
@@ -425,7 +471,10 @@ class LocalizationDataset(basedataset.BaseDataset):
                                    #'transformation_matrix':transformation_matrix,
                                    #'gt_transformation_matrix': gt_transformation_matrix
                                    'relative_pose_for_loss':relative_pose_for_loss,
-                                   'gt_relative_pose_for_loss': gt_relative_pose_for_loss}
+                                   'gt_relative_pose_for_loss': gt_relative_pose_for_loss,
+                                   'feature_num': merged_feature_dict[next(iter(merged_feature_dict))].__len__(),
+                                   'merged_feature_dict': merged_feature_dict,
+                                   }
                                   )
 
         if self.visualize:
