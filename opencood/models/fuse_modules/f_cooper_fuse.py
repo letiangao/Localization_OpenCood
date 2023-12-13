@@ -23,10 +23,16 @@ class SpatialFusion(nn.Module):
         # x: B, C, H, W, split x:[(B1, C, W, H), (B2, C, W, H)]
         split_x = self.regroup(x, record_len)
         out = []
+        out_split_xx = []
 
         for xx in split_x:
             if loc_flg:
-                xx = xx.view(1, 2 * 256 * 100 * 352)
+                #xx = xx.view(1, 2 * 256 * 100 * 352)
+                split_xx = torch.tensor_split(xx, 2) # here 2 indicates 2 agent, not batch size 2
+                for yy in split_xx:
+                    out_split_xx.append(yy)
+                xx = torch.cat(out_split_xx,dim=1)
+                #xx = xx.view(1, 2 * 256 * 100 * 352)
             else:
                 xx = torch.max(xx, dim=0, keepdim=True)[0]
             out.append(xx)

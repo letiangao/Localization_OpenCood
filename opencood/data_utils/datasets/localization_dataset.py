@@ -174,6 +174,7 @@ class LocalizationDataset(basedataset.BaseDataset):
             projected_lidar_stack = []
 
         # loop over all CAVs to process information
+        distance = 0
         for cav_id, selected_cav_base in base_data_dict.items():
             #skip_scenario_flg = False
             # check if the cav is within the communication range with ego
@@ -186,7 +187,7 @@ class LocalizationDataset(basedataset.BaseDataset):
             if distance > opencood.data_utils.datasets.COM_RANGE: \
                 #skip_scenario_flg = True
                 continue
-            print("distance:", distance)
+            #print("distance:", distance)
             selected_cav_processed = self.get_item_single_car(
                 selected_cav_base,
                 ego_lidar_pose)
@@ -261,14 +262,16 @@ class LocalizationDataset(basedataset.BaseDataset):
              'time_delay': time_delay,
              'infra': infra,
              'spatial_correction_matrix': spatial_correction_matrix,
-             'pairwise_t_matrix': pairwise_t_matrix})
+             'pairwise_t_matrix': pairwise_t_matrix
+             })
 
         processed_data_dict['ego']['pose'].update({
             'relative_pose': relative_pose,  # localization modify
             'gt_relative_pose': gt_relative_pose,  # localization modify
             'relative_pose_for_loss': relative_pose_for_loss,
             'gt_relative_pose_for_loss': gt_relative_pose_for_loss,
-            'merged_feature_dict':merged_feature_dict
+            'merged_feature_dict':merged_feature_dict,
+            'distance': distance
         })
 
         if self.visualize:
@@ -391,6 +394,7 @@ class LocalizationDataset(basedataset.BaseDataset):
         #localization modify
         relative_pose_for_loss_list = []
         gt_relative_pose_for_loss_list = []
+        distance = []
 
         if self.visualize:
             origin_lidar = []
@@ -417,6 +421,7 @@ class LocalizationDataset(basedataset.BaseDataset):
             #    ego_dict['gt_transformation_matrix']) #localization modify
             relative_pose_for_loss_list.append(ego_dict['pose']['relative_pose_for_loss'])#localization modify
             gt_relative_pose_for_loss_list.append(ego_dict['pose']['gt_relative_pose_for_loss'])#localization modify
+            distance.append(ego_dict['pose']['distance'])#localization modify
 
             if self.visualize:
                 origin_lidar.append(ego_dict['origin_lidar'])
@@ -474,6 +479,7 @@ class LocalizationDataset(basedataset.BaseDataset):
                                    'gt_relative_pose_for_loss': gt_relative_pose_for_loss,
                                    'feature_num': merged_feature_dict[next(iter(merged_feature_dict))].__len__(),
                                    'merged_feature_dict': merged_feature_dict,
+                                   'distance':distance
                                    }
                                   )
 

@@ -147,6 +147,8 @@ def main():
             # the model will be evaluation mode during validation
             aaa= batch_data['ego']['feature_num']
             del batch_data['ego']['merged_feature_dict']
+            print("distance:",batch_data['ego']['distance'])
+            del batch_data['ego']['distance']
 
             print("i:", i)
             model.train()
