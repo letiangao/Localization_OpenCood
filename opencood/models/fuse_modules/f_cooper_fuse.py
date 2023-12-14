@@ -36,4 +36,5 @@ class SpatialFusion(nn.Module):
             else:
                 xx = torch.max(xx, dim=0, keepdim=True)[0]
             out.append(xx)
+            out_split_xx = []
         return torch.cat(out, dim=0)
