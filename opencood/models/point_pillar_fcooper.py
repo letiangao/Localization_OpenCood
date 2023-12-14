@@ -47,9 +47,30 @@ class PointPillarFCooper(nn.Module):
                                   kernel_size=1)
         # localization modify. in_channel should be 128*2*cav_num？
         # self.loc_head = nn.Conv2d(128 * 2*2, 6, kernel_size=1)
-        self.loc_head = nn.Linear(100*352*256*2, 6)
-        #self.loc_head = nn.Linear(100 * 352 * 256 * 2, out_features=256)
-        #self.loc_head_layer2 = nn.Linear(256, 6)
+        #self.loc_head = nn.Linear(100*352*256*2, 6)
+
+        self.loc_head = nn.Sequential( #(512,100,352)
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0), #(512,50,176)
+            nn.Conv2d(512, 512, (3, 3), padding=1), #(512,50,176)
+            nn.LeakyReLU(0.01),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0), #(512,25,88)
+            nn.Conv2d(512,512,(3,3), padding=1), #(512,25,88)
+            nn.LeakyReLU(0.01),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0), #(512,12,44)
+            nn.Conv2d(512,512, (3,3), padding=1), #(512,12,44)
+            nn.LeakyReLU(0.01),
+            nn.MaxPool2d(kernel_size=2, stride=(2,4), padding=0), #(512,6,11)
+            nn.Conv2d(512,512, (3,3), padding=1),#(512,6,11)
+            nn.LeakyReLU(0.01),
+            nn.MaxPool2d(kernel_size=2, stride=(3,2), padding=0),#(512,2,5)
+            nn.Conv2d(512, 512, (3,3), padding=1),#(512,2,5)
+            nn.LeakyReLU(0.01),
+            nn.MaxPool2d(kernel_size=2, stride=(2,5), padding=0), #(512,1,1)
+            nn.Flatten(),
+            nn.Linear(512,512, bias=True),
+            nn.LeakyReLU(0.01),
+            nn.Linear(512, 6, bias=True)
+        )
 
         if args['backbone_fix']:
             self.backbone_fix()
@@ -124,7 +145,7 @@ class PointPillarFCooper(nn.Module):
             # localization modify
             # localization_feature = spatial_features_2d.view(1, 100*352*256*2)
             localization_feature = self.fusion_net(spatial_features_2d, record_len, True)
-            locm = self.loc_head(localization_feature.reshape(1, -1))
+            locm = self.loc_head(localization_feature)
         else:
             locm = None
         #locm_hidden = nn.functional.relu(self.loc_head_layer1(localization_feature))
