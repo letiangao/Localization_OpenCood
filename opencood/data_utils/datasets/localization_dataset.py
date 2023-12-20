@@ -149,10 +149,12 @@ class LocalizationDataset(basedataset.BaseDataset):
                 relative_pose = transformation_to_x(cav_content['params']['transformation_matrix'])
                 gt_relative_pose = transformation_to_x(cav_content['params']['gt_transformation_matrix'])
                 # for localization learning, the tan(yaw) is the target instead of yaw
-                relative_pose_for_loss = relative_pose
-                relative_pose_for_loss[4] = np.tan(relative_pose[4])
-                gt_relative_pose_for_loss = gt_relative_pose
-                gt_relative_pose_for_loss[4] = np.tan(gt_relative_pose[4])
+                # only keep x,y and tan(yaw)
+                relative_pose_for_loss = [relative_pose[0], relative_pose[1], np.tan(relative_pose[4])]
+                #relative_pose_for_loss[4] = np.tan(relative_pose[4])
+                gt_relative_pose_for_loss = [gt_relative_pose[0], gt_relative_pose[1], np.tan(gt_relative_pose[4])]
+                #gt_relative_pose_for_loss[4] = np.tan(gt_relative_pose[4])
+
 
 
         pairwise_t_matrix = \
@@ -473,9 +475,9 @@ class LocalizationDataset(basedataset.BaseDataset):
                                    'prior_encoding': prior_encoding,
                                    'spatial_correction_matrix': spatial_correction_matrix_list,
                                    'pairwise_t_matrix': pairwise_t_matrix,
-                                   #'transformation_matrix':transformation_matrix,
+                                   #'transformation_matrix': transformation_matrix,
                                    #'gt_transformation_matrix': gt_transformation_matrix
-                                   'relative_pose_for_loss':relative_pose_for_loss,
+                                   'relative_pose_for_loss': relative_pose_for_loss,
                                    'gt_relative_pose_for_loss': gt_relative_pose_for_loss,
                                    'feature_num': merged_feature_dict[next(iter(merged_feature_dict))].__len__(),
                                    'merged_feature_dict': merged_feature_dict,
