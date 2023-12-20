@@ -149,6 +149,11 @@ class LocalizationLoss(nn.Module):
         # localization modify
         # localization loss
         localization_loss_src = self.reg_loss_func(locm, (relative_pose_for_loss - gt_relative_pose_for_loss))
+        print('locm:', locm)
+        print('true:', (relative_pose_for_loss - gt_relative_pose_for_loss))
+        print('relative_pose_for_loss', relative_pose_for_loss)
+        print('gt_relative_pose_for_loss', gt_relative_pose_for_loss)
+        print('localization_loss_src:', localization_loss_src)
         loc_loss = localization_loss_src.sum()
         #pose_error_for_loss = torch.abs(locm-(relative_pose_for_loss-gt_relative_pose_for_loss))
         #loc_loss = pose_error_for_loss.sum()# * self.loc_weight[1]

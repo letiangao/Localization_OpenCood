@@ -41,15 +41,15 @@ def train_parser():
 
 
 def main():
-    visual_localization = True
+    visual_localization = False #True #localization modify
     opt = train_parser()
     hypes = yaml_utils.load_yaml(opt.hypes_yaml, opt)
 
     multi_gpu_utils.init_distributed_mode(opt)
 
     print('-----------------Dataset Building------------------')
-    opencood_train_dataset = build_dataset(hypes, visualize=True, train=True)
-    opencood_validate_dataset = build_dataset(hypes, visualize=True, train=False)
+    opencood_train_dataset = build_dataset(hypes, visualize=False, train=True)
+    opencood_validate_dataset = build_dataset(hypes, visualize=False, train=False)
 
     if opt.distributed:
         sampler_train = DistributedSampler(opencood_train_dataset)
@@ -183,6 +183,7 @@ def main():
                                                                  vis_pcd,
                                                                  'hwl',
                                                                  mode='intensity')
+                #print(pcd)
                 if i == 0:
                     vis.add_geometry(pcd)
                     for ii in range(len(vis_aabbs)):
@@ -201,7 +202,7 @@ def main():
                 time.sleep(0.001)
             # (end)localization dataset visualization
 
-        model.train()
+            model.train()
             model.zero_grad()
             optimizer.zero_grad()
 

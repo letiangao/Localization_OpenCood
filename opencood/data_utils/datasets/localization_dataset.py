@@ -148,11 +148,15 @@ class LocalizationDataset(basedataset.BaseDataset):
             if not cav_content['ego']:#localization modify
                 relative_pose = transformation_to_x(cav_content['params']['transformation_matrix'])
                 gt_relative_pose = transformation_to_x(cav_content['params']['gt_transformation_matrix'])
+                #print('relative_trans_mat:',cav_content['params']['transformation_matrix'])
+                #print('gtrelative_trans_mat:',cav_content['params']['gt_transformation_matrix'])
                 # for localization learning, the tan(yaw) is the target instead of yaw
                 # only keep x,y and tan(yaw)
-                relative_pose_for_loss = [relative_pose[0], relative_pose[1], np.tan(relative_pose[4])]
+                #relative_pose_for_loss = [relative_pose[0], relative_pose[1], np.tan(relative_pose[4])]
+                relative_pose_for_loss = [relative_pose[0], relative_pose[1], relative_pose[4]]
                 #relative_pose_for_loss[4] = np.tan(relative_pose[4])
-                gt_relative_pose_for_loss = [gt_relative_pose[0], gt_relative_pose[1], np.tan(gt_relative_pose[4])]
+                #gt_relative_pose_for_loss = [gt_relative_pose[0], gt_relative_pose[1], np.tan(gt_relative_pose[4])]
+                gt_relative_pose_for_loss = [gt_relative_pose[0], gt_relative_pose[1], gt_relative_pose[4]]
                 #gt_relative_pose_for_loss[4] = np.tan(gt_relative_pose[4])
 
 
