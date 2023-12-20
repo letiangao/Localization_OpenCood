@@ -20,6 +20,10 @@ from opencood.data_utils.datasets import build_dataset
 from opencood.tools import train_utils
 
 from collections import OrderedDict # localization modify
+from opencood.visualization import vis_utils # localization modify
+import open3d as o3d # localization modify
+import time
+from opencood.visualization import vis_utils
 
 
 def train_parser():
@@ -37,14 +41,15 @@ def train_parser():
 
 
 def main():
+    visual_localization = True
     opt = train_parser()
     hypes = yaml_utils.load_yaml(opt.hypes_yaml, opt)
 
     multi_gpu_utils.init_distributed_mode(opt)
 
     print('-----------------Dataset Building------------------')
-    opencood_train_dataset = build_dataset(hypes, visualize=False, train=True)
-    opencood_validate_dataset = build_dataset(hypes, visualize=False, train=False)
+    opencood_train_dataset = build_dataset(hypes, visualize=True, train=True)
+    opencood_validate_dataset = build_dataset(hypes, visualize=True, train=False)
 
     if opt.distributed:
         sampler_train = DistributedSampler(opencood_train_dataset)
@@ -127,6 +132,25 @@ def main():
     epoches = hypes['train_params']['epoches']
     # used to help schedule learning rate
 
+    #(start)localization dataset visualization
+    if visual_localization:
+        vis = o3d.visualization.Visualizer()
+        vis.create_window()
+
+        vis.get_render_option().background_color = [0.05, 0.05, 0.05]
+        vis.get_render_option().point_size = 1.0
+        vis.get_render_option().show_coordinate_frame = True
+
+        # used to visualize lidar points
+        vis_pcd = o3d.geometry.PointCloud()
+        # used to visualize object bounding box, maximum 50
+        vis_aabbs = []
+        for _ in range(50):
+            vis_aabbs.append(o3d.geometry.LineSet())
+    # (end)localization dataset visualization
+
+
+
     for epoch in range(init_epoch, max(epoches, init_epoch)):
         if hypes['lr_scheduler']['core_method'] != 'cosineannealwarm':
             scheduler.step(epoch)
@@ -151,7 +175,33 @@ def main():
             del batch_data['ego']['distance']
 
             print("i:", i)
-            model.train()
+
+            # (start)localization dataset visualization
+            if visual_localization:
+                pcd, aabbs = \
+                    vis_utils.visualize_single_sample_dataloader(batch_data['ego'],
+                                                                 vis_pcd,
+                                                                 'hwl',
+                                                                 mode='intensity')
+                if i == 0:
+                    vis.add_geometry(pcd)
+                    for ii in range(len(vis_aabbs)):
+                        index = ii if ii < len(aabbs) else -1
+                        vis_aabbs[ii] = vis_utils.lineset_assign(vis_aabbs[ii], aabbs[index])
+                        vis.add_geometry(vis_aabbs[ii])
+
+                for ii in range(len(vis_aabbs)):
+                    index = ii if ii < len(aabbs) else -1
+                    vis_aabbs[ii] = vis_utils.lineset_assign(vis_aabbs[ii], aabbs[index])
+                    vis.update_geometry(vis_aabbs[ii])
+
+                vis.update_geometry(pcd)
+                vis.poll_events()
+                vis.update_renderer()
+                time.sleep(0.001)
+            # (end)localization dataset visualization
+
+        model.train()
             model.zero_grad()
             optimizer.zero_grad()
 
@@ -169,6 +219,8 @@ def main():
             # becomes a list, which containing all data from other cavs
             # as well
             a = batch_data['ego']['record_len']
+
+
             if not opt.half:
                 ouput_dict = model(batch_data['ego'])
                 if not ouput_dict['dim_match_flg']:
@@ -251,7 +303,9 @@ def main():
             writer.add_scalar('Validate_Loss', valid_ave_loss, epoch)
 
     print('Training Finished, checkpoints saved to %s' % saved_path)
-
+    #(start) visualizaton localization
+    if visual_localization:
+        vis.destroy_window()
 
 if __name__ == '__main__':
     main()
