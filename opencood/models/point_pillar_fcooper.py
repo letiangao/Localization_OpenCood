@@ -54,22 +54,22 @@ class PointPillarFCooper(nn.Module):
             nn.Conv2d(512, 512, (3, 3), padding=1), #(512,50,176)
             nn.LeakyReLU(0.01),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=0), #(512,25,88)
-            nn.Conv2d(512,512,(3,3), padding=1), #(512,25,88)
+            nn.Conv2d(512, 512,(3,3), padding=1), #(512,25,88)
             nn.LeakyReLU(0.01),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=0), #(512,12,44)
-            nn.Conv2d(512,512, (3,3), padding=1), #(512,12,44)
+            nn.Conv2d(512, 512, (3,3), padding=1), #(512,12,44)
             nn.LeakyReLU(0.01),
             nn.MaxPool2d(kernel_size=2, stride=(2,4), padding=0), #(512,6,11)
-            nn.Conv2d(512,512, (3,3), padding=1),#(512,6,11)
+            nn.Conv2d(512, 512, (3,3), padding=1),#(512,6,11)
             nn.LeakyReLU(0.01),
             nn.MaxPool2d(kernel_size=2, stride=(3,2), padding=0),#(512,2,5)
             nn.Conv2d(512, 512, (3,3), padding=1),#(512,2,5)
             nn.LeakyReLU(0.01),
             nn.MaxPool2d(kernel_size=2, stride=(2,5), padding=0), #(512,1,1)
             nn.Flatten(),
-            nn.Linear(512,512, bias=True),
+            nn.Linear(512,256, bias=True),
             nn.LeakyReLU(0.01),
-            nn.Linear(512, 6, bias=True)
+            nn.Linear(256, 3, bias=True)
         )
 
         if args['backbone_fix']:

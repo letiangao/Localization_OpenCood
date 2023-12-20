@@ -396,7 +396,7 @@ class BaseDataset(Dataset):
         ryp_std = np.random.normal(0, ryp_std, 3)
         noise_pose = [pose[0] + xyz_noise[0],
                       pose[1] + xyz_noise[1],
-                      pose[2] + xyz_noise[2],
+                      pose[2], #+ xyz_noise[2],
                       pose[3],
                       pose[4] + ryp_std[1],
                       pose[5]]

@@ -19,7 +19,7 @@ __all__ = {
 # the final range for evaluation
 GT_RANGE = [-140, -40, -3, 140, 40, 1]
 # The communication range for cavs
-COM_RANGE = 70
+COM_RANGE = 40
 
 
 def build_dataset(dataset_cfg, visualize=False, train=True):
