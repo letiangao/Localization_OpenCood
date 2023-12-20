@@ -212,6 +212,8 @@ class LocalizationDataset(basedataset.BaseDataset):
             if self.visualize:
                 projected_lidar_stack.append(
                     selected_cav_processed['projected_lidar'])
+                projected_lidar_stack.append(
+                    selected_cav_processed['projected_lidar_gt'])
 
         # exclude all repetitive objects
         unique_indices = \
@@ -302,6 +304,8 @@ class LocalizationDataset(basedataset.BaseDataset):
         transformation_matrix = \
             selected_cav_base['params']['transformation_matrix']
 
+        gt_transformation_matrix = selected_cav_base['params']['gt_transformation_matrix']
+
         # retrieve objects under ego coordinates
         object_bbx_center, object_bbx_mask, object_ids = \
             self.post_processor.generate_object_center([selected_cav_base],
@@ -312,8 +316,21 @@ class LocalizationDataset(basedataset.BaseDataset):
         lidar_np = shuffle_points(lidar_np)
         # remove points that hit itself
         lidar_np = mask_ego_points(lidar_np)
+
+        lidar_np_gt = copy.deepcopy(lidar_np)
+        lidar_np_gt[:, :3] = \
+            box_utils.project_points_by_matrix_torch(lidar_np_gt[:, :3],
+                                                     gt_transformation_matrix)
+
+
         # project the lidar to ego space
         if self.proj_first:
+            if selected_cav_base['ego']:
+                lidar_np[:, 3] = 0.9
+                lidar_np_gt[:, 3] = 0.9
+            else:
+                lidar_np[:, 3] = 0.5
+                lidar_np_gt[:, 3] = 5
             lidar_np[:, :3] = \
                 box_utils.project_points_by_matrix_torch(lidar_np[:, :3],
                                                          transformation_matrix)
@@ -331,6 +348,7 @@ class LocalizationDataset(basedataset.BaseDataset):
             {'object_bbx_center': object_bbx_center[object_bbx_mask == 1],
              'object_ids': object_ids,
              'projected_lidar': lidar_np,
+             'projected_lidar_gt': lidar_np_gt,
              'processed_features': processed_lidar,
              'velocity': velocity})
 
