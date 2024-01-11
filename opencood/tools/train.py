@@ -133,6 +133,7 @@ def main():
     # used to help schedule learning rate
 
     #(start)localization dataset visualization
+    vis_subflag = True
     if visual_localization:
         vis = o3d.visualization.Visualizer()
         vis.create_window()
@@ -165,6 +166,7 @@ def main():
         pbar2 = tqdm.tqdm(total=len(train_loader), leave=True)
 
         for i, batch_data in enumerate(train_loader):
+
             # localization modify: if the scenario contains only ego CAV, which means the other CAV is out of range, skip this scenario
             if batch_data['ego']['record_len'].sum().item()< 2*hypes['train_params']['batch_size']: # localization modify
                 continue  # localization modify
@@ -183,8 +185,9 @@ def main():
                                                                  vis_pcd,
                                                                  'hwl',
                                                                  mode='intensity')
-                #print(pcd)
-                if i == 0:
+                print(pcd)
+                if vis_subflag == True: #i == 0:
+                    vis_subflag = False
                     vis.add_geometry(pcd)
                     for ii in range(len(vis_aabbs)):
                         index = ii if ii < len(aabbs) else -1
@@ -231,7 +234,9 @@ def main():
                 # second argument is always your label dictionary.
                 #localization modify: third and fourth arguments are for localization
                 final_loss = criterion(ouput_dict,
-                                       batch_data['ego']['label_dict'])
+                                       batch_data['ego']['label_dict'],
+                                        #localization_loss_method_flg = True
+                                       )
                                        #batch_data['ego']['relative_pose_for_loss'],
                                        #batch_data['ego']['gt_relative_pose_for_loss']
             else:
@@ -241,7 +246,8 @@ def main():
                         continue
                     del ouput_dict['dim_match_flg']
                     final_loss = criterion(ouput_dict,
-                                           batch_data['ego']['label_dict']
+                                           batch_data['ego']['label_dict'],
+                                           #localization_loss_method_flg= True
                                            #batch_data['ego']['relative_pose_for_loss'],
                                            #batch_data['ego']['gt_relative_pose_for_loss']
                                            )
@@ -261,8 +267,8 @@ def main():
             if hypes['lr_scheduler']['core_method'] == 'cosineannealwarm':
                 scheduler.step_update(epoch * num_steps + i)
 
-            if i > 2000: #localization modify
-                break
+            # if i > 2000: #localization modify
+            #     break
 
         if epoch % hypes['train_params']['save_freq'] == 0:
             torch.save(model_without_ddp.state_dict(),
@@ -296,8 +302,14 @@ def main():
                     final_loss = criterion(ouput_dict,
                                            batch_data['ego']['label_dict'])
                     valid_ave_loss.append(final_loss.item())
-                    if i>1000: #localization modify
-                        break
+                    # if i>1000: #localization modify
+                    #     break
+            # save validate loss details to txt
+            f = open(os.path.join(saved_path, 'validation_loss_at_epoch%d.txt' % epoch), 'w')
+            for line in valid_ave_loss:
+                f.write(str(line)+'\n')
+            f.close()
+
             valid_ave_loss = statistics.mean(valid_ave_loss)
             print('At epoch %d, the validation loss is %f' % (epoch,
                                                               valid_ave_loss))
