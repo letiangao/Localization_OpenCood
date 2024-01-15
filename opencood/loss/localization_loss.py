@@ -162,16 +162,22 @@ class LocalizationLoss(nn.Module):
                 gt_locm[i, 2] = gt_locm[i, 2]-2*math.pi
             elif gt_locm[i, 2] < -math.pi:
                 gt_locm[i, 2] = gt_locm[i, 2]+2*math.pi
-        localization_loss_src = self.reg_loss_func(locm, gt_locm)#, localization_loss_method_flg = self.localization_loss_method_flg)
-
-
+        #localization_loss_src = self.reg_loss_func(locm, gt_locm)#, localization_loss_method_flg = self.localization_loss_method_flg)
+        #loc_loss = localization_loss_src.sum() / rm.shape[0]
+        localization_loss_src1 = self.reg_loss_func(torch.index_select(locm,1, torch.tensor([0]).cuda(0)), torch.index_select(gt_locm,1, torch.tensor([0]).cuda(0)))
+        localization_loss_src2 = self.reg_loss_func(torch.index_select(locm,1, torch.tensor([1]).cuda(0)), torch.index_select(gt_locm,1, torch.tensor([1]).cuda(0)))
+        localization_loss_src3 = self.reg_loss_func(torch.index_select(locm,1, torch.tensor([2]).cuda(0)), torch.index_select(gt_locm,1, torch.tensor([2]).cuda(0)))
+        loc_loss = (localization_loss_src1.sum()+localization_loss_src2.sum()+localization_loss_src3.sum()) / rm.shape[0]
 
         print('locm:', locm)
         print('true:', (relative_pose_for_loss - gt_relative_pose_for_loss))
         print('relative_pose_for_loss', relative_pose_for_loss)
         print('gt_relative_pose_for_loss', gt_relative_pose_for_loss)
-        print('localization_loss_src:', localization_loss_src)
-        loc_loss = localization_loss_src.sum()/rm.shape[0]
+        #print('localization_loss_src:', localization_loss_src)
+        print('localization_loss_src:', localization_loss_src1, " ", localization_loss_src2, " ", localization_loss_src3)
+
+
+
         #pose_error_for_loss = torch.abs(locm-(relative_pose_for_loss-gt_relative_pose_for_loss))
         #loc_loss = pose_error_for_loss.sum()# * self.loc_weight[1]
             # pose_error_for_loss(1, 2) * self.loc_weight[2] + \

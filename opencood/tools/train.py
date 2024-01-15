@@ -267,8 +267,8 @@ def main():
             if hypes['lr_scheduler']['core_method'] == 'cosineannealwarm':
                 scheduler.step_update(epoch * num_steps + i)
 
-            # if i > 2000: #localization modify
-            #     break
+            if i > 3000: #localization modify
+                break
 
         if epoch % hypes['train_params']['save_freq'] == 0:
             torch.save(model_without_ddp.state_dict(),
@@ -302,8 +302,8 @@ def main():
                     final_loss = criterion(ouput_dict,
                                            batch_data['ego']['label_dict'])
                     valid_ave_loss.append(final_loss.item())
-                    # if i>1000: #localization modify
-                    #     break
+                    if i>1500: #localization modify
+                        break
             # save validate loss details to txt
             f = open(os.path.join(saved_path, 'validation_loss_at_epoch%d.txt' % epoch), 'w')
             for line in valid_ave_loss:
