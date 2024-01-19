@@ -164,10 +164,17 @@ class LocalizationLoss(nn.Module):
                 gt_locm[i, 2] = gt_locm[i, 2]+2*math.pi
         #localization_loss_src = self.reg_loss_func(locm, gt_locm)#, localization_loss_method_flg = self.localization_loss_method_flg)
         #loc_loss = localization_loss_src.sum() / rm.shape[0]
-        localization_loss_src1 = self.reg_loss_func(torch.index_select(locm,1, torch.tensor([0]).cuda(0)), torch.index_select(gt_locm,1, torch.tensor([0]).cuda(0)))
-        localization_loss_src2 = self.reg_loss_func(torch.index_select(locm,1, torch.tensor([1]).cuda(0)), torch.index_select(gt_locm,1, torch.tensor([1]).cuda(0)))
-        localization_loss_src3 = self.reg_loss_func(torch.index_select(locm,1, torch.tensor([2]).cuda(0)), torch.index_select(gt_locm,1, torch.tensor([2]).cuda(0)))
-        loc_loss = (localization_loss_src1.sum()+localization_loss_src2.sum()+localization_loss_src3.sum()) / rm.shape[0]
+        localization_loss_src1 = self.reg_loss_func(torch.index_select(locm, 1, torch.tensor([0]).cuda(0)),
+                                                    torch.index_select(gt_locm, 1, torch.tensor([0]).cuda(0)))
+        localization_loss_src2 = self.reg_loss_func(torch.index_select(locm, 1, torch.tensor([1]).cuda(0)),
+                                                    torch.index_select(gt_locm, 1, torch.tensor([1]).cuda(0)))
+        localization_loss_src3 = self.reg_loss_func(torch.index_select(locm, 1, torch.tensor([2]).cuda(0)),
+                                                    torch.index_select(gt_locm, 1, torch.tensor([2]).cuda(0)))
+        localization_loss_src1 = localization_loss_src1.sum() / rm.shape[0]
+        localization_loss_src2 = localization_loss_src2.sum() / rm.shape[0]
+        localization_loss_src3 = localization_loss_src3.sum() / rm.shape[0]
+
+        loc_loss = localization_loss_src1 + localization_loss_src2 + localization_loss_src3
 
         print('locm:', locm)
         print('true:', (relative_pose_for_loss - gt_relative_pose_for_loss))
@@ -189,11 +196,15 @@ class LocalizationLoss(nn.Module):
         # localization modify (add loc loss)
         # total_loss = reg_loss + conf_loss + loc_loss
         total_loss = loc_loss
+        #total_loss = reg_loss + conf_loss
 
         self.loss_dict.update({'total_loss': total_loss,
                                'reg_loss': reg_loss,
                                'conf_loss': conf_loss,
-                               'loc_loss': loc_loss
+                               'loc_loss': loc_loss,
+                               'loc_loss_src1': localization_loss_src1,
+                               'loc_loss_src2': localization_loss_src2,
+                               'loc_loss_src3': localization_loss_src3
                                })
 
         return total_loss
@@ -283,6 +294,9 @@ class LocalizationLoss(nn.Module):
         reg_loss = self.loss_dict['reg_loss']
         conf_loss = self.loss_dict['conf_loss']
         loc_loss = self.loss_dict['loc_loss']
+        loc_loss_src1 = self.loss_dict['loc_loss_src1']
+        loc_loss_src2 = self.loss_dict['loc_loss_src2']
+        loc_loss_src3 = self.loss_dict['loc_loss_src3']
         if pbar is None:
             '''
             print("[epoch %d][%d/%d], || Loss: %.4f || Conf Loss: %.4f"
@@ -313,5 +327,11 @@ class LocalizationLoss(nn.Module):
                           epoch*batch_len + batch_id)
         # localization modify
         writer.add_scalar('Localization_loss', loc_loss.item(),
+                          epoch * batch_len + batch_id)
+        writer.add_scalar('loc_loss_src1', loc_loss_src1.item(),
+                          epoch * batch_len + batch_id)
+        writer.add_scalar('loc_loss_src2', loc_loss_src2.item(),
+                          epoch * batch_len + batch_id)
+        writer.add_scalar('loc_loss_src3', loc_loss_src3.item(),
                           epoch * batch_len + batch_id)
 
