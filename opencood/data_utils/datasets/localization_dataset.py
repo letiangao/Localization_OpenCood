@@ -182,6 +182,16 @@ class LocalizationDataset(basedataset.BaseDataset):
         # loop over all CAVs to process information
         distance = 0
         for cav_id, selected_cav_base in base_data_dict.items():
+            # localization modify: save original lidar_np, for inference visualizaiton
+            if selected_cav_base['ego']:
+                processed_data_dict['ego'].update(
+                    {'lidar_np_ego_not_trans': selected_cav_base['lidar_np']
+                     })
+            else:
+                processed_data_dict['ego'].update(
+                    {'lidar_np_cav_not_trans': selected_cav_base['lidar_np']
+                     })
+
             #skip_scenario_flg = False
             # check if the cav is within the communication range with ego
             distance = \
@@ -322,6 +332,7 @@ class LocalizationDataset(basedataset.BaseDataset):
         lidar_np = shuffle_points(lidar_np)
         # remove points that hit itself
         lidar_np = mask_ego_points(lidar_np)
+
 
         lidar_np_gt = copy.deepcopy(lidar_np)
         lidar_np_gt[:, :3] = \
@@ -527,11 +538,15 @@ class LocalizationDataset(basedataset.BaseDataset):
                         'anchor_box']))})
 
         # save the transformation matrix (4, 4) to ego vehicle
-        # transformation_matrix_torch = \
-        #     torch.from_numpy(np.identity(4)).float()
-        # output_dict['ego'].update({'transformation_matrix':
-        #                                transformation_matrix_torch})
+        transformation_matrix_torch = \
+            torch.from_numpy(np.identity(4)).float()
+        output_dict['ego'].update({'transformation_matrix':
+                                       transformation_matrix_torch})
 
+        output_dict['ego'].update(
+            {'lidar_np_ego_not_trans': batch[0]['ego']['lidar_np_ego_not_trans'],
+             'lidar_np_cav_not_trans': batch[0]['ego']['lidar_np_cav_not_trans']
+             })
         return output_dict
 
     def post_process(self, data_dict, output_dict):

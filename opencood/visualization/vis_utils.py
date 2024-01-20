@@ -251,7 +251,8 @@ def visualize_single_sample_output_gt(pred_tensor,
                                       pcd,
                                       show_vis=True,
                                       save_path='',
-                                      mode='constant'):
+                                      mode='intensity'#mode='constant' #localization modify
+                                      ):
     """
     Visualize the prediction, groundtruth with point cloud together.
 
