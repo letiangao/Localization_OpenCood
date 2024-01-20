@@ -66,8 +66,9 @@ def inference_early_fusion(batch_data, model, dataset):
     pred_box_tensor, pred_score, gt_box_tensor = \
         dataset.post_process(batch_data,
                              output_dict)
+    pose_error_model = output_dict['ego']['locm']  # localization modify
 
-    return pred_box_tensor, pred_score, gt_box_tensor
+    return pred_box_tensor, pred_score, gt_box_tensor, pose_error_model  # localization modify
 
 
 def inference_intermediate_fusion(batch_data, model, dataset):
