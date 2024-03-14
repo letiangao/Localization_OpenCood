@@ -18,6 +18,8 @@ def cal_localization_error(loca_error_matrix,loca_error_x_list,loca_error_y_list
     pose_model_np = pose_initial_np-torch_tensor_to_numpy(pose_error_model[0])
 
     error = pose_gt_np - pose_model_np
+    print('errors initial:', pose_gt_np-pose_initial_np)
+    print('errors from model:', error)
     error_x = abs(error[0])
     error_y = abs(error[1])
     error_yaw = abs(error[2])

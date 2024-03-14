@@ -108,6 +108,7 @@ def main():
     loca_error_yaw_list_reverse = []
     loca_error_pos_list_reverse = []
 
+
     if opt.show_sequence:
         vis = o3d.visualization.Visualizer()
         vis.create_window()
@@ -125,12 +126,16 @@ def main():
             vis_aabbs_gt.append(o3d.geometry.LineSet())
             vis_aabbs_pred.append(o3d.geometry.LineSet())
 
+    ii=0
     for i, batch_data in tqdm(enumerate(data_loader)):
         # localization modify: if the scenario contains only ego CAV, which means the other CAV is out of range, skip this scenario
         if batch_data['ego']['record_len'].sum().item() < 2 * hypes['train_params'][
             'batch_size']:  # localization modify
             continue  # localization modify
-        # print(i)
+        print(ii)
+        if ii>1400:
+            break
+        ii=ii+1
         del batch_data['ego']['merged_feature_dict']
         print("distance:", batch_data['ego']['distance'])
         lidar_ego = batch_data['ego']['lidar_np_ego_not_trans']
@@ -201,7 +206,7 @@ def main():
                                        result_stat,
                                        0.7)
 
-            loca_error_matrix,loc_error_x_mean,loc_error_y_mean,loc_error_yaw_mean,loc_error_mean = cal_localization_error(loca_error_matrix,loca_error_x_list,loca_error_y_list,loca_error_yaw_list,loca_error_pos_list, pose_gt, pose_initial, pose_error_model)
+            loca_error_matrix, loc_error_x_mean, loc_error_y_mean, loc_error_yaw_mean, loc_error_mean = cal_localization_error(loca_error_matrix,loca_error_x_list,loca_error_y_list,loca_error_yaw_list,loca_error_pos_list, pose_gt, pose_initial, pose_error_model)
 
             # localization modify 0322
             # add a flag, if convert the features of two agents from A,B to B,A, find the wrong localization while inference
@@ -211,6 +216,9 @@ def main():
                     loca_error_matrix_reverse, loc_error_x_mean_reverse, loc_error_y_mean_reverse, loc_error_yaw_mean_reverse, loc_error_mean_reverse = cal_localization_error_reverse(
                         loca_error_matrix_reverse, loca_error_x_list_reverse, loca_error_y_list_reverse, loca_error_yaw_list_reverse,
                         loca_error_pos_list_reverse, pose_gt, pose_initial, pose_error_model)
+
+
+            print('mean_err:pos', loc_error_mean, ', yaw:', loc_error_yaw_mean, ', x:', loc_error_x_mean, ', y:', loc_error_y_mean)
 
             # localization modify: create pcd for localization visualization
             pcd_loca_visual = vis_utils_localization.transLidarToPcd(lidar_ego, lidar_cav, pose_gt, pose_initial,
@@ -284,6 +292,38 @@ def main():
     eval_utils.eval_final_results(result_stat,
                                   opt.model_dir,
                                   opt.global_sort_detections)
+    # save localization results to txt
+    noise = 100*hypes['wild_setting']['xyz_std']+hypes['wild_setting']['ryp_std']
+    f = open(os.path.join(saved_path, 'error_pos_noise%d.txt' % noise), 'w')
+    for line in loca_error_pos_list:
+        f.write(str(line) + '\n')
+    f.close()
+
+    f = open(os.path.join(saved_path, 'error_x_noise%d.txt' % noise), 'w')
+    for line in loca_error_x_list:
+        f.write(str(line) + '\n')
+    f.close()
+
+    f = open(os.path.join(saved_path, 'error_y_noise%d.txt' % noise), 'w')
+    for line in loca_error_y_list:
+        f.write(str(line) + '\n')
+    f.close()
+
+    f = open(os.path.join(saved_path, 'error_yaw_noise%d.txt' % noise), 'w')
+    for line in loca_error_yaw_list:
+        f.write(str(line) + '\n')
+    f.close()
+
+    f = open(os.path.join(saved_path, 'error_matrix_noise%d.txt' % noise), 'w')
+    for line in loca_error_matrix:
+        f.write(str(line) + '\n')
+    f.close()
+
+
+
+
+
+
     if opt.show_sequence:
         vis.destroy_window()
 
