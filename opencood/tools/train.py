@@ -267,7 +267,7 @@ def main():
             if hypes['lr_scheduler']['core_method'] == 'cosineannealwarm':
                 scheduler.step_update(epoch * num_steps + i)
 
-            if i > 3000: #localization modify
+            if i > 5000: #localization modify
                 break
 
         if epoch % hypes['train_params']['save_freq'] == 0:

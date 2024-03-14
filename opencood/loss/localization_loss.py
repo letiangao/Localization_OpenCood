@@ -172,7 +172,7 @@ class LocalizationLoss(nn.Module):
                                                     torch.index_select(gt_locm, 1, torch.tensor([2]).cuda(0)))
         localization_loss_src1 = localization_loss_src1.sum() / rm.shape[0]
         localization_loss_src2 = localization_loss_src2.sum() / rm.shape[0]
-        localization_loss_src3 = localization_loss_src3.sum() / rm.shape[0]
+        localization_loss_src3 = 1.5*57.3 * localization_loss_src3.sum() / rm.shape[0]
 
         loc_loss = localization_loss_src1 + localization_loss_src2 + localization_loss_src3
 
