@@ -110,6 +110,9 @@ class PointPillarFCooper(nn.Module):
         voxel_coords = data_dict['processed_lidar']['voxel_coords']
         voxel_num_points = data_dict['processed_lidar']['voxel_num_points']
         record_len = data_dict['record_len']
+        # localization modify 0322
+        # add a flag, if convert the features of two agents from A,B to B,A, find the wrong localization while inference
+        loca_inference_reverse_flg = data_dict['loca_inference_reverse_flg']
 
         batch_dict = {'voxel_features': voxel_features,
                       'voxel_coords': voxel_coords,
@@ -129,7 +132,7 @@ class PointPillarFCooper(nn.Module):
         if self.compression:
             spatial_features_2d = self.naive_compressor(spatial_features_2d)
 
-        fused_feature = self.fusion_net(spatial_features_2d, record_len, False)
+        fused_feature = self.fusion_net(spatial_features_2d, record_len, False, False)
 
 
         psm = self.cls_head(fused_feature)
@@ -149,7 +152,7 @@ class PointPillarFCooper(nn.Module):
         if dim_match_flg:
             # localization modify
             # localization_feature = spatial_features_2d.view(1, 100*352*256*2)
-            localization_feature = self.fusion_net(spatial_features_2d, record_len, True)
+            localization_feature = self.fusion_net(spatial_features_2d, record_len, True, loca_inference_reverse_flg)
             locm = self.loc_head(localization_feature)
         else:
             locm = None
