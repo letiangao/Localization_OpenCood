@@ -23,7 +23,7 @@ from opencood.visualization import vis_utils_localization
 import matplotlib.pyplot as plt
 
 from collections import OrderedDict
-from opencood.utils.eval_utils_localization import cal_localization_error
+from opencood.utils.eval_utils_localization import cal_localization_error, cal_localization_error_reverse, pose_error_model_judgement
 
 from opencood.utils.pcd_utils import \
     mask_points_by_range, mask_ego_points, shuffle_points, \
@@ -63,6 +63,10 @@ def main():
 
     hypes = yaml_utils.load_yaml(None, opt)
 
+    # localization modify 0322
+    # add a flag, if convert the features of two agents from A,B to B,A, find the wrong localization while inference
+    loca_reverse_module = True
+
     print('Dataset Building')
     opencood_dataset = build_dataset(hypes, visualize=True, train=False)
     print(f"{len(opencood_dataset)} samples found.")
@@ -97,6 +101,12 @@ def main():
     loca_error_y_list = []
     loca_error_yaw_list = []
     loca_error_pos_list = []
+
+    loca_error_matrix_reverse = []
+    loca_error_x_list_reverse = []
+    loca_error_y_list_reverse = []
+    loca_error_yaw_list_reverse = []
+    loca_error_pos_list_reverse = []
 
     if opt.show_sequence:
         vis = o3d.visualization.Visualizer()
@@ -156,10 +166,22 @@ def main():
                                                            model,
                                                            opencood_dataset) #localization modify
             elif opt.fusion_method == 'intermediate':
+                # localization modify 0322
+                # add a flag, if convert the features of two agents from A,B to B,A, find the wrong localization while inference
+                batch_data['ego']['loca_inference_reverse_flg'] = False
                 pred_box_tensor, pred_score, gt_box_tensor, pose_error_model = \
                     inference_utils.inference_intermediate_fusion(batch_data,
                                                                   model,
                                                                   opencood_dataset) #localization modify
+                # localization modify 0322
+                # add a flag, if convert the features of two agents from A,B to B,A, find the wrong localization while inference
+                if loca_reverse_module:
+                    batch_data['ego']['loca_inference_reverse_flg'] = True
+                    pred_box_tensor_reverse, pred_score_reverse, gt_box_tensor_reverse, pose_error_model_reverse = \
+                        inference_utils.inference_intermediate_fusion(batch_data,
+                                                                      model,
+                                                                      opencood_dataset)  # localization modify
+
             else:
                 raise NotImplementedError('Only early, late and intermediate'
                                           'fusion is supported.')
@@ -180,6 +202,15 @@ def main():
                                        0.7)
 
             loca_error_matrix,loc_error_x_mean,loc_error_y_mean,loc_error_yaw_mean,loc_error_mean = cal_localization_error(loca_error_matrix,loca_error_x_list,loca_error_y_list,loca_error_yaw_list,loca_error_pos_list, pose_gt, pose_initial, pose_error_model)
+
+            # localization modify 0322
+            # add a flag, if convert the features of two agents from A,B to B,A, find the wrong localization while inference
+            if loca_reverse_module:
+                pose_error_model_flg = pose_error_model_judgement(pose_error_model, pose_error_model_reverse)
+                if pose_error_model_flg:
+                    loca_error_matrix_reverse, loc_error_x_mean_reverse, loc_error_y_mean_reverse, loc_error_yaw_mean_reverse, loc_error_mean_reverse = cal_localization_error_reverse(
+                        loca_error_matrix_reverse, loca_error_x_list_reverse, loca_error_y_list_reverse, loca_error_yaw_list_reverse,
+                        loca_error_pos_list_reverse, pose_gt, pose_initial, pose_error_model)
 
             # localization modify: create pcd for localization visualization
             pcd_loca_visual = vis_utils_localization.transLidarToPcd(lidar_ego, lidar_cav, pose_gt, pose_initial,
