@@ -177,7 +177,7 @@ def main():
             del batch_data['ego']['distance']
 
             print("i:", i)
-
+            batch_data['ego']['loca_inference_reverse_flg'] = False #this para only used in inference
             # (start)localization dataset visualization
             if visual_localization:
                 pcd, aabbs = \
@@ -283,6 +283,7 @@ def main():
                     if batch_data['ego']['record_len'].sum().item()<2*hypes['train_params']['batch_size']:  # localization modify
                         continue  # localization modify
                     del batch_data['ego']['merged_feature_dict']
+                    batch_data['ego']['loca_inference_reverse_flg'] = False  # this para only used in inference
 
                     model.eval()
 
@@ -302,7 +303,7 @@ def main():
                     final_loss = criterion(ouput_dict,
                                            batch_data['ego']['label_dict'])
                     valid_ave_loss.append(final_loss.item())
-                    if i>1500: #localization modify
+                    if i>1000: #1500: #localization modify
                         break
             # save validate loss details to txt
             f = open(os.path.join(saved_path, 'validation_loss_at_epoch%d.txt' % epoch), 'w')

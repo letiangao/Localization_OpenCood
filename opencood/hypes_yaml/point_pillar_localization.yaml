@@ -2,11 +2,14 @@ name: point_pillar_fcooper
 #root_dir: 'opv2v_data_dumping/train'
 #root_dir: "/home/cav/projects/letian/data/train"
 #root_dir: "/media/cav/Expansion/data/opv2v/train"
-root_dir: "/home/letiangao18/Data/train"
+#root_dir: "/home/letiangao18/Data/train"
+root_dir: "/data/download/letian_temp/opv2v/validate-001/train"
+
 #validate_dir: 'opv2v_data_dumping/validate'
 #validate_dir: "/home/cav/projects/letian/data/validate"
 #validate_dir: "/media/cav/Expansion/data/opv2v/validate"
-validate_dir: "/home/letiangao18/Data/validate"
+#validate_dir: "/home/letiangao18/Data/validate"
+validate_dir: "/data/download/letian_temp/opv2v/validate-001/validate"
 
 yaml_parser: "load_point_pillar_params"
 train_params:
@@ -26,6 +29,7 @@ preprocess:
   core_method: 'SpVoxelPreprocessor'
   args:
     voxel_size: &voxel_size [0.2, 0.2, 20]
+    #voxel_size: &voxel_size [0.1, 0.1, 20]
     max_points_per_voxel: 32
     max_voxel_train: 32000
     max_voxel_test: 70000

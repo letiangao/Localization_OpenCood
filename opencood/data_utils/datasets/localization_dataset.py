@@ -7,6 +7,7 @@ Dataset class for intermediate fusion
 """
 import random
 import math
+import os
 import warnings
 from collections import OrderedDict
 
@@ -93,6 +94,29 @@ class LocalizationDataset(basedataset.BaseDataset):
                         continue
                     print(key, 'first vehicle is not ego')
 
+        '''
+        # following is for temp usage, generate the file roots in localization database and save to txt for later use in finding files in point cloud matching
+        txt_save_path = '/home/cav/projects/letian/'
+        f = open(os.path.join(txt_save_path, 'loca_dataset_files_root.txt'),
+                 'w')  # format: scenario_id,time id, v1_id, v1 file root, v2 id, v2 file root
+
+        v_id_list = []
+        for scenario_ord, content in modified_scenario_database.items():
+            for v_id, content2 in content.items():
+                v_id_list.append(v_id)
+            for time_id, v in content[v_id_list[0]].items():
+                if time_id == 'ego':
+                    continue
+                f.write(str(scenario_ord) + '\t')
+                f.write(str(time_id) + '\t')
+                f.write(str(v_id_list[0]) + '\t')
+                f.write(str(v['yaml']) + '\t')
+                f.write(str(v_id_list[1]) + '\t')
+                f.write(str(content[v_id_list[1]][time_id]['yaml']) + '\n')
+                # print(time_id, '', v_id_list[0], v['yaml'], v_id_list[1], content[v_id_list[1]][time_id]['yaml'])
+            v_id_list = []
+        f.close()
+        '''
 
         # if project first, cav's lidar will first be projected to
         # the ego's coordinate frame. otherwise, the feature will be
