@@ -65,7 +65,7 @@ def main():
 
     # localization modify 0322
     # add a flag, if convert the features of two agents from A,B to B,A, find the wrong localization while inference
-    loca_reverse_module = True
+    loca_reverse_module = False #True
 
     print('Dataset Building')
     opencood_dataset = build_dataset(hypes, visualize=True, train=False)
@@ -108,6 +108,10 @@ def main():
     loca_error_yaw_list_reverse = []
     loca_error_pos_list_reverse = []
 
+    pose_error_model_flg_list = []
+    x_diff_list = []
+    y_diff_list = []
+
 
     if opt.show_sequence:
         vis = o3d.visualization.Visualizer()
@@ -133,7 +137,7 @@ def main():
             'batch_size']:  # localization modify
             continue  # localization modify
         print(ii)
-        if ii>1400:
+        if ii>5000: #5000
             break
         ii=ii+1
         del batch_data['ego']['merged_feature_dict']
@@ -211,12 +215,16 @@ def main():
             # localization modify 0322
             # add a flag, if convert the features of two agents from A,B to B,A, find the wrong localization while inference
             if loca_reverse_module:
-                pose_error_model_flg = pose_error_model_judgement(pose_error_model, pose_error_model_reverse)
+                pose_error_model_flg, x_diff, y_diff = pose_error_model_judgement(pose_error_model, pose_error_model_reverse)
+                pose_error_model_flg_list.append(pose_error_model_flg)
+                x_diff_list.append(x_diff)
+                y_diff_list.append(y_diff)
                 if pose_error_model_flg:
                     loca_error_matrix_reverse, loc_error_x_mean_reverse, loc_error_y_mean_reverse, loc_error_yaw_mean_reverse, loc_error_mean_reverse = cal_localization_error_reverse(
                         loca_error_matrix_reverse, loca_error_x_list_reverse, loca_error_y_list_reverse, loca_error_yaw_list_reverse,
                         loca_error_pos_list_reverse, pose_gt, pose_initial, pose_error_model)
-
+                    print('w.reverseModule:mean_err:pos', loc_error_mean_reverse, ', yaw:', loc_error_yaw_mean_reverse,
+                          ', x:', loc_error_x_mean_reverse, ', y:', loc_error_y_mean)
 
             print('mean_err:pos', loc_error_mean, ', yaw:', loc_error_yaw_mean, ', x:', loc_error_x_mean, ', y:', loc_error_y_mean)
 
@@ -294,27 +302,35 @@ def main():
                                   opt.global_sort_detections)
     # save localization results to txt
     noise = 100*hypes['wild_setting']['xyz_std']+hypes['wild_setting']['ryp_std']
-    f = open(os.path.join(saved_path, 'error_pos_noise%d.txt' % noise), 'w')
+    saved_path_localization = saved_path+'/testtest'
+    f = open(os.path.join(saved_path_localization, 'error_reverse_module_flag%d.txt' % noise), 'w') # format: flag, x_diff, y_diff,"x_diff" is the output of model AB-BA^-1
+    for zz in range(len(x_diff_list)):
+        f.write(str(pose_error_model_flg_list[zz]) + '\t')
+        f.write(str(x_diff_list[zz]) + '\t')
+        f.write(str(y_diff_list[zz]) + '\n')
+    f.close()
+
+    f = open(os.path.join(saved_path_localization, 'error_pos_noise%d.txt' % noise), 'w')
     for line in loca_error_pos_list:
         f.write(str(line) + '\n')
     f.close()
 
-    f = open(os.path.join(saved_path, 'error_x_noise%d.txt' % noise), 'w')
+    f = open(os.path.join(saved_path_localization, 'error_x_noise%d.txt' % noise), 'w')
     for line in loca_error_x_list:
         f.write(str(line) + '\n')
     f.close()
 
-    f = open(os.path.join(saved_path, 'error_y_noise%d.txt' % noise), 'w')
+    f = open(os.path.join(saved_path_localization, 'error_y_noise%d.txt' % noise), 'w')
     for line in loca_error_y_list:
         f.write(str(line) + '\n')
     f.close()
 
-    f = open(os.path.join(saved_path, 'error_yaw_noise%d.txt' % noise), 'w')
+    f = open(os.path.join(saved_path_localization, 'error_yaw_noise%d.txt' % noise), 'w')
     for line in loca_error_yaw_list:
         f.write(str(line) + '\n')
     f.close()
 
-    f = open(os.path.join(saved_path, 'error_matrix_noise%d.txt' % noise), 'w')
+    f = open(os.path.join(saved_path_localization, 'error_matrix_noise%d.txt' % noise), 'w')
     for line in loca_error_matrix:
         f.write(str(line) + '\n')
     f.close()

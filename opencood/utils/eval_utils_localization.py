@@ -83,6 +83,6 @@ def pose_error_model_judgement(pose_error_model, pose_error_model_reverse):
     x_diff = abs(pose_error_model_np[0] + pose_error_model_reverse_np[0])
     y_diff = abs(pose_error_model_np[1] + pose_error_model_reverse_np[1])
     if x_diff < 0.5 and y_diff < 0.5:
-        return True
+        return True, x_diff, y_diff
     else:
-        return False
+        return False, x_diff, y_diff

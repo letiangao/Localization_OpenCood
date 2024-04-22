@@ -54,7 +54,7 @@ def transLidarToPcd(lidar_ego, lidar_cav, pose_gt, pose_initial, pose_error_mode
                                      cav_lidar_range) #self.params['preprocess']['cav_lidar_range']
 
     lidar_cav_gt = copy.deepcopy(lidar_cav)
-    lidar_cav_gt[:, 3] = 0.2  # set color for localization visualization
+    lidar_cav_gt[:, 3] = 0.85  # set color for localization visualization
     lidar_cav_gt[:, :3] = \
         box_utils.project_points_by_matrix_torch(lidar_cav_gt[:, :3],
                                                  transformation_gt)
@@ -85,9 +85,9 @@ def transLidarToPcd(lidar_ego, lidar_cav, pose_gt, pose_initial, pose_error_mode
     #         box_utils.project_points_by_matrix_torch(lidar_cav[:, :3],
     #                                                  transformation_matrix)
     projected_lidar_stack.append(lidar_ego) #orange
-    projected_lidar_stack.append(lidar_cav_gt) #blue
+    projected_lidar_stack.append(lidar_cav_gt) #pink
     projected_lidar_stack.append(lidar_cav_initial) #yellow
-    projected_lidar_stack.append(lidar_cav_model) #purple
+    #projected_lidar_stack.append(lidar_cav_model) #purple
     pcd = np.vstack(projected_lidar_stack)
     return pcd
 

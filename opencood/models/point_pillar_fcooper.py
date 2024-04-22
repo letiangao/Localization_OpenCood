@@ -50,11 +50,16 @@ class PointPillarFCooper(nn.Module):
         #self.loc_head = nn.Linear(100*352*256*2, 6)
 
         self.loc_head = nn.Sequential( #(512,100,352)
-            #(start)for smaller voxel size
+            # # (start)for smaller voxel size 0.1
+            # nn.MaxPool2d(kernel_size=2, stride=2, padding=0),  # (512,400,1408)->(512,200,704)
+            # nn.Conv2d(512, 512, (3, 3), padding=1),  # (512,200,704)
+            # nn.LeakyReLU(0.01),
+            # # (end)for smaller voxel size 0.1
+            #(start)for smaller voxel size 0.2
             nn.MaxPool2d(kernel_size=2, stride=2, padding=0),  # (512,200,704)->(512,100,352)
             nn.Conv2d(512, 512, (3, 3), padding=1),  # (512,100,352)
             nn.LeakyReLU(0.01),
-            #(end)for smaller voxel size
+            #(end)for smaller voxel size 0.2
             nn.MaxPool2d(kernel_size=2, stride=2, padding=0), #(512,50,176)
             nn.Conv2d(512, 512, (3, 3), padding=1), #(512,50,176)
             nn.LeakyReLU(0.01),
